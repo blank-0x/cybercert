@@ -126,11 +126,16 @@ fun CurrentlyStudyingSection(certs: List<Certification>, c: AppColors) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(cert.name, color = c.primaryText, fontWeight = FontWeight.Medium)
                         Text(cert.provider, color = c.secondaryText, fontSize = 12.sp)
                     }
-                    Text("${cert.progressPercent}%", color = c.accent, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "${cert.progressPercent}%",
+                        color = c.accent,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 12.dp)
+                    )
                 }
             }
         }

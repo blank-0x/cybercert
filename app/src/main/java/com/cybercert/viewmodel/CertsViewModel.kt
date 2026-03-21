@@ -9,6 +9,7 @@ import com.cybercert.model.CertRepository
 import com.cybercert.model.CertStatus
 import com.cybercert.model.Certification
 import com.cybercert.model.StudySession
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,36 +28,31 @@ class CertsViewModel(private val repository: CertRepository, context: Context) :
     val selectedFilter: StateFlow<String> = _selectedFilter
 
     init {
-        _catalog.value = repository.loadCatalog(context)
+        // Load catalog on IO — JSON asset parsing must not block the main thread
+        viewModelScope.launch(Dispatchers.IO) {
+            _catalog.value = repository.loadCatalog(context)
+        }
     }
 
     fun setFilter(filter: String) { _selectedFilter.value = filter }
 
-    fun filteredCerts(): List<Certification> {
-        return when (_selectedFilter.value) {
-            "In Progress" -> certs.value.filter { it.status == CertStatus.IN_PROGRESS }
-            "Completed" -> certs.value.filter { it.status == CertStatus.COMPLETED }
-            else -> certs.value
-        }
-    }
-
-    fun addCertFromCatalog(cat: CatalogCert) = viewModelScope.launch {
+    fun addCertFromCatalog(cat: CatalogCert) = viewModelScope.launch(Dispatchers.IO) {
         val existing = repository.getCertById(cat.id)
         if (existing == null) {
             repository.insert(repository.catalogCertToEntity(cat))
         }
     }
 
-    fun updateCert(cert: Certification) = viewModelScope.launch {
+    fun updateCert(cert: Certification) = viewModelScope.launch(Dispatchers.IO) {
         repository.update(cert)
     }
 
-    fun deleteCert(cert: Certification) = viewModelScope.launch {
+    fun deleteCert(cert: Certification) = viewModelScope.launch(Dispatchers.IO) {
         repository.delete(cert)
     }
 
     fun logStudySession(certId: String, durationMinutes: Int, notes: String = "") {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val session = StudySession(
                 certId = certId,
                 date = System.currentTimeMillis(),

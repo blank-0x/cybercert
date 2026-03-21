@@ -108,7 +108,11 @@ fun CertsScreen(
                 }
             }
 
-            val filtered = viewModel.filteredCerts()
+            val filtered = when (selectedFilter) {
+                "In Progress" -> certs.filter { it.status == CertStatus.IN_PROGRESS }
+                "Completed"   -> certs.filter { it.status == CertStatus.COMPLETED }
+                else          -> certs
+            }
             if (filtered.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(
@@ -342,7 +346,10 @@ fun CertDetailDialog(
     var sessionMinutes by remember { mutableStateOf("") }
     var examDate by remember { mutableStateOf(cert.examDate) }
     var showConfirmDelete by remember { mutableStateOf(false) }
+    // Track minutes logged during this dialog session so Save doesn't overwrite them
+    var sessionMinutesLogged by remember { mutableStateOf(0) }
     val progressError = progressTouched && (progress.toIntOrNull()?.let { it !in 0..100 } ?: true)
+    val displayedStudyHours = cert.studyHoursTotal + (sessionMinutesLogged / 60f)
     val dateFormatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
 
     fun showDatePicker() {
@@ -469,7 +476,10 @@ fun CertDetailDialog(
                     )
                     Button(
                         onClick = {
-                            sessionMinutes.toIntOrNull()?.let { onLogSession(it) }
+                            sessionMinutes.toIntOrNull()?.let { mins ->
+                                onLogSession(mins)
+                                sessionMinutesLogged += mins
+                            }
                             sessionMinutes = ""
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = c.accent)
@@ -478,7 +488,7 @@ fun CertDetailDialog(
                     }
                 }
 
-                Text("%.1fh total studied".format(cert.studyHoursTotal), color = c.secondaryText, fontSize = 12.sp)
+                Text("%.1fh total studied".format(displayedStudyHours), color = c.secondaryText, fontSize = 12.sp)
             }
         },
         confirmButton = {
@@ -490,11 +500,18 @@ fun CertDetailDialog(
                     TextButton(onClick = onDismiss) { Text("Cancel", color = c.secondaryText) }
                     Button(
                         onClick = {
+                            // Commit any minutes still in the field (user skipped the Log button)
+                            val pendingMinutes = sessionMinutes.toIntOrNull() ?: 0
+                            if (pendingMinutes > 0) {
+                                onLogSession(pendingMinutes)
+                                sessionMinutesLogged += pendingMinutes
+                            }
                             onUpdate(cert.copy(
                                 status = status,
                                 progressPercent = progress.toIntOrNull()?.coerceIn(0, 100) ?: cert.progressPercent,
                                 notes = notes,
-                                examDate = examDate
+                                examDate = examDate,
+                                studyHoursTotal = cert.studyHoursTotal + (sessionMinutesLogged / 60f)
                             ))
                             onDismiss()
                         },
