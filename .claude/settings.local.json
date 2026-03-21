@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gradle --version)",
+      "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradle/wrapper/gradle-wrapper.jar\" \"C:/Users/juani/Projects/cybercert/gradle/wrapper/gradle-wrapper.jar\")",
+      "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradlew\" \"C:/Users/juani/Projects/cybercert/gradlew\")",
+      "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradlew.bat\" \"C:/Users/juani/Projects/cybercert/gradlew.bat\")"
+    ]
+  }
+}

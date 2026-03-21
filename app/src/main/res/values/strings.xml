@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CyberCert</string>
+    <string name="tab_certs">Certs</string>
+    <string name="tab_news">News</string>
+    <string name="tab_profile">Profile</string>
+</resources>
