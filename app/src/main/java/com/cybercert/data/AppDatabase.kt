@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.*
 import com.cybercert.model.Certification
 import com.cybercert.model.CertStatus
+import com.cybercert.model.NewsItem
 import com.cybercert.model.StudySession
 
 class Converters {
@@ -15,14 +16,15 @@ class Converters {
 }
 
 @Database(
-    entities = [Certification::class, StudySession::class],
-    version = 1,
+    entities = [Certification::class, StudySession::class, NewsItem::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun certDao(): CertDao
     abstract fun studySessionDao(): StudySessionDao
+    abstract fun newsItemDao(): NewsItemDao
 
     companion object {
         @Volatile
@@ -34,7 +36,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "cybercert.db"
-                ).build().also { INSTANCE = it }
+                )
+                .fallbackToDestructiveMigration(dropAllTables = true)
+                .build().also { INSTANCE = it }
             }
         }
     }

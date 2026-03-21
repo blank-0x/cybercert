@@ -4,7 +4,12 @@
       "Bash(gradle --version)",
       "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradle/wrapper/gradle-wrapper.jar\" \"C:/Users/juani/Projects/cybercert/gradle/wrapper/gradle-wrapper.jar\")",
       "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradlew\" \"C:/Users/juani/Projects/cybercert/gradlew\")",
-      "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradlew.bat\" \"C:/Users/juani/Projects/cybercert/gradlew.bat\")"
+      "Bash(cp \"C:/Users/juani/Projects/privacy-shield/gradlew.bat\" \"C:/Users/juani/Projects/cybercert/gradlew.bat\")",
+      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew assembleDebug)",
+      "Bash(adb install:*)",
+      "Bash(JAVA_HOME=\"C:/Program Files/Android/Android Studio/jbr\" ./gradlew.bat assembleDebug 2>&1)",
+      "Bash(adb devices:*)",
+      "Bash(adb:*)"
     ]
   }
 }

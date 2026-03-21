@@ -1,34 +1,34 @@
 package com.cybercert.model
 
+import com.cybercert.data.NewsItemDao
 import com.cybercert.data.RssParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
-class NewsRepository {
-    private var cachedNews: List<NewsItem> = emptyList()
-    private val bookmarked = mutableSetOf<String>()
-    private val read = mutableSetOf<String>()
+class NewsRepository(private val dao: NewsItemDao) {
 
-    suspend fun fetchNews(): List<NewsItem> {
+    val newsFlow: Flow<List<NewsItem>> = dao.allNews()
+
+    suspend fun refresh(): Long {
         val fetched = withContext(Dispatchers.IO) { RssParser.fetchAll() }
-        cachedNews = fetched.map { item ->
+        val now = System.currentTimeMillis()
+        val existingMap = dao.getAllOnce().associateBy { it.id }
+        val merged = fetched.map { item ->
+            val prev = existingMap[item.id]
             item.copy(
-                isBookmarked = item.id in bookmarked,
-                isRead = item.id in read
+                isRead = prev?.isRead ?: false,
+                isBookmarked = prev?.isBookmarked ?: false,
+                cachedAt = now
             )
         }
-        return cachedNews
+        dao.upsertAll(merged)
+        return now
     }
 
-    fun toggleBookmark(id: String) {
-        if (id in bookmarked) bookmarked.remove(id) else bookmarked.add(id)
-        cachedNews = cachedNews.map { if (it.id == id) it.copy(isBookmarked = id in bookmarked) else it }
-    }
+    suspend fun toggleBookmark(id: String) = dao.toggleBookmark(id)
 
-    fun markRead(id: String) {
-        read.add(id)
-        cachedNews = cachedNews.map { if (it.id == id) it.copy(isRead = true) else it }
-    }
+    suspend fun markRead(id: String) = dao.markRead(id)
 
-    fun getCached(): List<NewsItem> = cachedNews
+    suspend fun lastCachedAt(): Long? = dao.lastCachedAt()
 }
