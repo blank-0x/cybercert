@@ -336,11 +336,13 @@ fun CertDetailDialog(
 ) {
     val context = LocalContext.current
     var progress by remember { mutableStateOf(cert.progressPercent.toString()) }
+    var progressTouched by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf(cert.status) }
     var notes by remember { mutableStateOf(cert.notes) }
     var sessionMinutes by remember { mutableStateOf("") }
     var examDate by remember { mutableStateOf(cert.examDate) }
     var showConfirmDelete by remember { mutableStateOf(false) }
+    val progressError = progressTouched && (progress.toIntOrNull()?.let { it !in 0..100 } ?: true)
     val dateFormatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
 
     fun showDatePicker() {
@@ -414,8 +416,17 @@ fun CertDetailDialog(
                 // Progress
                 OutlinedTextField(
                     value = progress,
-                    onValueChange = { if (it.length <= 3) progress = it },
+                    onValueChange = {
+                        if (it.length <= 3) {
+                            progress = it.filter(Char::isDigit)
+                            progressTouched = true
+                        }
+                    },
                     label = { Text("Progress %", color = c.secondaryText) },
+                    isError = progressError,
+                    supportingText = if (progressError) {
+                        { Text("Enter a value between 0 and 100", color = MaterialTheme.colorScheme.error) }
+                    } else null,
                     colors = outlinedFieldColors(c),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -443,11 +454,15 @@ fun CertDetailDialog(
                 }
 
                 // Study session log
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = sessionMinutes,
-                        onValueChange = { sessionMinutes = it },
+                        onValueChange = { v ->
+                            val digits = v.filter(Char::isDigit)
+                            sessionMinutes = if (digits.isEmpty()) "" else minOf(digits.toInt(), 999).toString()
+                        },
                         label = { Text("Study minutes", color = c.secondaryText) },
+                        supportingText = { Text("Max 999 min per session", color = c.secondaryText, fontSize = 11.sp) },
                         colors = outlinedFieldColors(c),
                         modifier = Modifier.weight(1f),
                         singleLine = true
