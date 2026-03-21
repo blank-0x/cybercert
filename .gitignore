@@ -8,3 +8,8 @@
 .externalNativeBuild
 .cxx
 local.properties
+app/build/
+.claude/
+*.apk
+*.keystore
+keystore.properties
