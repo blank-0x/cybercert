@@ -13,10 +13,10 @@
 ## Screenshots
 
 <div align="center">
-  <img src="screenshots/certs.jpg" width="22%" alt="My Certifications"/>
-  <img src="screenshots/news.jpg" width="22%" alt="Security News"/>
-  <img src="screenshots/career.jpg" width="22%" alt="Career Path"/>
-  <img src="screenshots/profile.jpg" width="22%" alt="Profile & Settings"/>
+  <img src="screenshots/certs.webp" width="22%" alt="My Certifications"/>
+  <img src="screenshots/news.webp" width="22%" alt="Security News"/>
+  <img src="screenshots/career.webp" width="22%" alt="Career Path"/>
+  <img src="screenshots/profile.webp" width="22%" alt="Profile & Settings"/>
 </div>
 
 ---
