@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.cybercert.R
+import com.cybercert.model.NewsCategory
 import com.cybercert.model.NewsItem
 import com.cybercert.ui.theme.AppColors
 import com.cybercert.viewmodel.NewsViewModel
@@ -48,38 +51,100 @@ fun NewsScreen(
     listState: LazyListState = rememberLazyListState(),
     modifier: Modifier = Modifier
 ) {
+    var showBookmarks by remember { mutableStateOf(false) }
+
+    if (showBookmarks) {
+        BookmarksScreen(
+            viewModel = viewModel,
+            isDark = isDark,
+            onNavigateBack = { showBookmarks = false },
+            modifier = modifier
+        )
+        return
+    }
+
     val c = AppColors(isDark)
     val news by viewModel.news.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val lastRefreshed by viewModel.lastRefreshed.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Pagination: show first PAGE_SIZE items, expand on "Load more"
     var visibleCount by remember { mutableIntStateOf(PAGE_SIZE) }
-    // Reset pagination when news list changes (e.g. after refresh)
     LaunchedEffect(news.size) { if (visibleCount > news.size) visibleCount = maxOf(PAGE_SIZE, news.size) }
+
+    val categoryChips = listOf(
+        null to "All",
+        NewsCategory.VULNERABILITIES to "Vulnerabilities",
+        NewsCategory.MALWARE to "Malware",
+        NewsCategory.BREACHES to "Breaches",
+        NewsCategory.PHISHING to "Phishing",
+        NewsCategory.TOOLS to "Tools"
+    )
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(top = 16.dp)
     ) {
-        Text(
-            text = "Security News",
-            style = MaterialTheme.typography.headlineMedium,
-            color = c.primaryText,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-        )
-        if (lastRefreshed != null && lastRefreshed!! > 0L) {
-            Text(
-                text = "Updated ${timeAgo(lastRefreshed!!)}",
-                color = c.secondaryText,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp)
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Security News",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = c.primaryText,
+                    fontWeight = FontWeight.Bold
+                )
+                if (lastRefreshed != null && lastRefreshed!! > 0L) {
+                    Text(
+                        text = "Updated ${timeAgo(lastRefreshed!!)}",
+                        color = c.secondaryText,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            IconButton(onClick = { showBookmarks = true }) {
+                Icon(
+                    Icons.Filled.Bookmark,
+                    contentDescription = "Bookmarks",
+                    tint = c.accent
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+
+        // Category filter chips
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
+            items(categoryChips) { (category, label) ->
+                val isSelected = selectedCategory == category
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { viewModel.setCategory(category) },
+                    label = { Text(label, color = if (isSelected) c.chipSelText else c.chipUnselText) },
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = isSelected,
+                        borderColor = c.chipBorder,
+                        selectedBorderColor = Color.Transparent
+                    ),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = c.chipUnselBg,
+                        selectedContainerColor = c.chipSelBg,
+                        labelColor = c.chipUnselText,
+                        selectedLabelColor = c.chipSelText
+                    )
+                )
+            }
+        }
 
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -109,7 +174,6 @@ fun NewsScreen(
                             }
                         )
                     }
-                    // Load more button
                     if (news.size > visibleCount) {
                         item(key = "load_more", contentType = "load_more") {
                             Box(

@@ -2,8 +2,11 @@ package com.cybercert.data
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.cybercert.model.Certification
 import com.cybercert.model.CertStatus
+import com.cybercert.model.NewsCategory
 import com.cybercert.model.NewsItem
 import com.cybercert.model.StudySession
 
@@ -13,11 +16,24 @@ class Converters {
 
     @TypeConverter
     fun toCertStatus(value: String): CertStatus = CertStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromNewsCategory(value: NewsCategory): String = value.name
+
+    @TypeConverter
+    fun toNewsCategory(value: String): NewsCategory =
+        try { NewsCategory.valueOf(value) } catch (_: Exception) { NewsCategory.GENERAL }
+}
+
+private val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE news_items ADD COLUMN category TEXT NOT NULL DEFAULT 'GENERAL'")
+    }
 }
 
 @Database(
     entities = [Certification::class, StudySession::class, NewsItem::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -37,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "cybercert.db"
                 )
+                .addMigrations(MIGRATION_2_3)
                 .fallbackToDestructiveMigration(dropAllTables = true)
                 .build().also { INSTANCE = it }
             }

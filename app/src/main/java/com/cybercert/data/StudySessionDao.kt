@@ -14,4 +14,7 @@ interface StudySessionDao {
 
     @Query("SELECT SUM(durationMinutes) / 60.0 FROM study_sessions WHERE certId = :certId")
     suspend fun getTotalHoursForCert(certId: String): Float?
+
+    @Query("SELECT date FROM study_sessions ORDER BY date DESC")
+    fun getAllSessionDatesFlow(): Flow<List<Long>>
 }

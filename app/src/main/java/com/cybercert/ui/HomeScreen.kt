@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.cybercert.BuildConfig
 import com.cybercert.data.NewsRefreshInterval
 import com.cybercert.model.Certification
+import com.cybercert.model.StreakData
 import com.cybercert.ui.theme.AppColors
 import com.cybercert.viewmodel.HomeStats
 import com.cybercert.viewmodel.HomeViewModel
@@ -25,6 +26,7 @@ fun HomeScreen(viewModel: HomeViewModel, isDark: Boolean, modifier: Modifier = M
     val c = AppColors(isDark)
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val currentlyStudying by viewModel.currentlyStudying.collectAsStateWithLifecycle()
+    val streakData by viewModel.streakData.collectAsStateWithLifecycle()
     val newsRefreshInterval by viewModel.newsRefreshInterval.collectAsStateWithLifecycle()
     val examRemindersEnabled by viewModel.examRemindersEnabled.collectAsStateWithLifecycle()
     val examReminderDays by viewModel.examReminderDays.collectAsStateWithLifecycle()
@@ -44,7 +46,7 @@ fun HomeScreen(viewModel: HomeViewModel, isDark: Boolean, modifier: Modifier = M
             fontWeight = FontWeight.Bold
         )
 
-        StatsSection(stats = stats, c = c)
+        StatsSection(stats = stats, streakData = streakData, c = c)
 
         if (currentlyStudying.isNotEmpty()) {
             CurrentlyStudyingSection(certs = currentlyStudying, c = c)
@@ -85,7 +87,7 @@ fun HomeScreen(viewModel: HomeViewModel, isDark: Boolean, modifier: Modifier = M
 }
 
 @Composable
-fun StatsSection(stats: HomeStats, c: AppColors) {
+fun StatsSection(stats: HomeStats, streakData: StreakData, c: AppColors) {
     SectionLabel("Overview", c)
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         StatCard("Tracked",     stats.totalTracked.toString(), c.accent,                c, Modifier.weight(1f))
@@ -93,6 +95,40 @@ fun StatsSection(stats: HomeStats, c: AppColors) {
         StatCard("In Progress", stats.inProgress.toString(),   c.orange,                c, Modifier.weight(1f))
     }
     StatCard("Total Study Hours", "%.1fh".format(stats.totalStudyHours), c.accent, c, Modifier.fillMaxWidth())
+    StreakCard(streakData = streakData, c = c)
+}
+
+@Composable
+fun StreakCard(streakData: StreakData, c: AppColors) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = c.card),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (c.isDark) 0.dp else 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            if (streakData.current > 0) {
+                val isActive = streakData.hasStudiedToday
+                Text(
+                    text = "🔥 ${streakData.current} day streak",
+                    color = if (isActive) c.orange else c.secondaryText,
+                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                    fontSize = 16.sp
+                )
+                if (!isActive) {
+                    Text(
+                        text = "(study today to keep it!)",
+                        color = c.secondaryText,
+                        fontSize = 12.sp
+                    )
+                }
+            } else {
+                Text("Start your streak today!", color = c.secondaryText, fontSize = 14.sp)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Best: ${streakData.best} days", color = c.secondaryText, fontSize = 12.sp)
+        }
+    }
 }
 
 @Composable

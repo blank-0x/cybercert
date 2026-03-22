@@ -4,17 +4,28 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.cybercert.data.NewsItemDao
+import com.cybercert.model.NewsCategory
 import com.cybercert.model.NewsItem
 import com.cybercert.model.NewsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class NewsViewModel(private val repository: NewsRepository) : ViewModel() {
 
+    private val _selectedCategory = MutableStateFlow<NewsCategory?>(null)
+    val selectedCategory: StateFlow<NewsCategory?> = _selectedCategory
+
     val news: StateFlow<List<NewsItem>> = repository.newsFlow
+        .combine(_selectedCategory) { newsList, category ->
+            if (category == null) newsList else newsList.filter { it.category == category }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val bookmarks: StateFlow<List<NewsItem>> = repository.bookmarksFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -25,20 +36,38 @@ class NewsViewModel(private val repository: NewsRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            _lastRefreshed.value = repository.lastCachedAt()
+            val lastFetch = repository.lastCachedAt()
+            _lastRefreshed.value = lastFetch
+            // Auto-refresh on app open only if cache is stale (> 30 min old)
+            if (repository.isStale()) {
+                doRefresh()
+            }
         }
-        refresh()
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            _isRefreshing.value = true
-            try {
-                val time = repository.refresh()
-                _lastRefreshed.value = time
-            } catch (_: Exception) { }
-            _isRefreshing.value = false
-        }
+        viewModelScope.launch { doRefresh() }
+    }
+
+    fun forceRefresh() {
+        viewModelScope.launch { doRefresh() }
+    }
+
+    fun resetFilter() {
+        _selectedCategory.value = null
+    }
+
+    private suspend fun doRefresh() {
+        _isRefreshing.value = true
+        try {
+            val time = repository.refresh()
+            _lastRefreshed.value = time
+        } catch (_: Exception) { }
+        _isRefreshing.value = false
+    }
+
+    fun setCategory(category: NewsCategory?) {
+        _selectedCategory.value = category
     }
 
     fun toggleBookmark(id: String) {

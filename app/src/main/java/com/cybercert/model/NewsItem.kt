@@ -4,6 +4,10 @@ import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+enum class NewsCategory {
+    VULNERABILITIES, MALWARE, BREACHES, PHISHING, TOOLS, GENERAL
+}
+
 @Immutable
 @Entity(tableName = "news_items")
 data class NewsItem(
@@ -16,5 +20,6 @@ data class NewsItem(
     val publishedAt: Long,
     val isRead: Boolean = false,
     val isBookmarked: Boolean = false,
-    val cachedAt: Long = 0L
+    val cachedAt: Long = 0L,
+    val category: NewsCategory = NewsCategory.GENERAL
 )

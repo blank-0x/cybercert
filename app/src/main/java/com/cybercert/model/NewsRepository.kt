@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 class NewsRepository(private val dao: NewsItemDao) {
 
     val newsFlow: Flow<List<NewsItem>> = dao.allNews()
+    val bookmarksFlow: Flow<List<NewsItem>> = dao.bookmarkedNews()
 
     suspend fun refresh(): Long {
         val fetched = withContext(Dispatchers.IO) { RssParser.fetchAll() }
@@ -31,4 +32,9 @@ class NewsRepository(private val dao: NewsItemDao) {
     suspend fun markRead(id: String) = dao.markRead(id)
 
     suspend fun lastCachedAt(): Long? = dao.lastCachedAt()
+
+    suspend fun isStale(): Boolean {
+        val lastFetch = dao.lastCachedAt() ?: return true
+        return System.currentTimeMillis() - lastFetch > 30 * 60 * 1000L
+    }
 }

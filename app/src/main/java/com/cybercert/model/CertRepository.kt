@@ -14,6 +14,7 @@ class CertRepository(context: Context) {
     private val gson = Gson()
 
     val allCerts: Flow<List<Certification>> = certDao.getAllCerts()
+    val allSessionDates: Flow<List<Long>> = sessionDao.getAllSessionDatesFlow()
 
     suspend fun insert(cert: Certification) = certDao.insert(cert)
     suspend fun update(cert: Certification) = certDao.update(cert)

@@ -24,4 +24,7 @@ interface NewsItemDao {
 
     @Query("SELECT MAX(cachedAt) FROM news_items")
     suspend fun lastCachedAt(): Long?
+
+    @Query("SELECT * FROM news_items WHERE isBookmarked = 1 ORDER BY publishedAt DESC")
+    fun bookmarkedNews(): Flow<List<NewsItem>>
 }

@@ -9,6 +9,9 @@ interface CertDao {
     @Query("SELECT * FROM certifications ORDER BY name ASC")
     fun getAllCerts(): Flow<List<Certification>>
 
+    @Query("SELECT * FROM certifications ORDER BY name ASC")
+    suspend fun getAllCertsOnce(): List<Certification>
+
     @Query("SELECT * FROM certifications WHERE id = :id")
     suspend fun getCertById(id: String): Certification?
 

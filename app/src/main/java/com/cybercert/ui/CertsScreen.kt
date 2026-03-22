@@ -1,17 +1,20 @@
 package com.cybercert.ui
 
 import android.app.DatePickerDialog
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -152,6 +155,7 @@ fun CertsScreen(
     showDetailDialog?.let { cert ->
         CertDetailDialog(
             cert = cert,
+            catalog = catalog,
             c = c,
             onUpdate = { updated ->
                 viewModel.updateCert(updated)
@@ -208,29 +212,30 @@ fun CertCard(cert: Certification, c: AppColors, onClick: () -> Unit) {
                 )
             }
 
+            // Exam countdown row below progress bar
+            cert.examDate?.let { examMs ->
+                val daysLeft = TimeUnit.MILLISECONDS.toDays(examMs - System.currentTimeMillis())
+                val (textColor, fontWeight) = when {
+                    daysLeft < 0    -> Pair(c.secondaryText, FontWeight.Normal)
+                    daysLeft <= 7   -> Pair(Color(0xFFFF6B35), FontWeight.Bold)
+                    daysLeft <= 30  -> Pair(Color(0xFFFF6B35), FontWeight.Normal)
+                    else            -> Pair(c.secondaryText, FontWeight.Normal)
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = if (daysLeft >= 0) "📅 $daysLeft days to exam" else "Exam date passed",
+                    color = textColor,
+                    fontWeight = fontWeight,
+                    fontSize = 13.sp
+                )
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Schedule, contentDescription = null, tint = c.secondaryText, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("%.1fh studied".format(cert.studyHoursTotal), color = c.secondaryText, fontSize = 12.sp)
-                }
-                cert.examDate?.let { examMs ->
-                    val daysLeft = TimeUnit.MILLISECONDS.toDays(examMs - System.currentTimeMillis())
-                    val urgent = daysLeft in 0..29
-                    val color = if (urgent) c.orange else c.primaryText
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (daysLeft >= 0) "${daysLeft}d to exam" else "Exam passed",
-                            color = color,
-                            fontSize = 12.sp,
-                            fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal
-                        )
-                    }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = c.secondaryText, modifier = Modifier.size(14.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("%.1fh studied".format(cert.studyHoursTotal), color = c.secondaryText, fontSize = 12.sp)
             }
         }
     }
@@ -329,9 +334,26 @@ fun AddCertDialog(
     )
 }
 
+private fun parseJsonArray(json: String): List<String> {
+    if (json.isBlank() || json == "[]") return emptyList()
+    return try {
+        json.trim().removePrefix("[").removeSuffix("]")
+            .split(",")
+            .map { it.trim().trim('"') }
+            .filter { it.isNotEmpty() }
+    } catch (_: Exception) { emptyList() }
+}
+
+private fun extractDomain(url: String): String {
+    return try {
+        java.net.URI(url).host?.removePrefix("www.") ?: url
+    } catch (_: Exception) { url }
+}
+
 @Composable
 fun CertDetailDialog(
     cert: Certification,
+    catalog: List<CatalogCert>,
     c: AppColors,
     onUpdate: (Certification) -> Unit,
     onDelete: () -> Unit,
@@ -346,11 +368,16 @@ fun CertDetailDialog(
     var sessionMinutes by remember { mutableStateOf("") }
     var examDate by remember { mutableStateOf(cert.examDate) }
     var showConfirmDelete by remember { mutableStateOf(false) }
-    // Track minutes logged during this dialog session so Save doesn't overwrite them
     var sessionMinutesLogged by remember { mutableStateOf(0) }
     val progressError = progressTouched && (progress.toIntOrNull()?.let { it !in 0..100 } ?: true)
     val displayedStudyHours = cert.studyHoursTotal + (sessionMinutesLogged / 60f)
     val dateFormatter = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+
+    val resourceUrls = remember(cert.resourceUrls) { parseJsonArray(cert.resourceUrls) }
+    val prereqIds = remember(cert.prerequisites) { parseJsonArray(cert.prerequisites) }
+    val prereqNames = remember(prereqIds, catalog) {
+        prereqIds.mapNotNull { id -> catalog.firstOrNull { it.id == id }?.name }
+    }
 
     fun showDatePicker() {
         val cal = Calendar.getInstance()
@@ -400,8 +427,14 @@ fun CertDetailDialog(
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(cert.description, color = c.secondaryText, fontSize = 13.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Description
+                if (cert.description.isNotBlank()) {
+                    Text(cert.description, color = c.secondaryText, fontSize = 14.sp)
+                }
 
                 // Status chips
                 Text("Status", color = c.accent, fontSize = 12.sp)
@@ -460,6 +493,60 @@ fun CertDetailDialog(
                     }
                 }
 
+                // Exam URL button
+                if (cert.examUrl.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(cert.examUrl)))
+                        },
+                        border = BorderStroke(1.dp, c.accent),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Register for Exam", color = c.accent)
+                    }
+                }
+
+                // Resource links
+                if (resourceUrls.isNotEmpty()) {
+                    Text("Resources", color = c.accent, fontSize = 12.sp)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        resourceUrls.forEach { url ->
+                            TextButton(
+                                onClick = {
+                                    try {
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                    } catch (_: Exception) {}
+                                },
+                                contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = extractDomain(url),
+                                    color = c.accent,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Prerequisites
+                if (prereqNames.isNotEmpty()) {
+                    Text("Prerequisites", color = c.accent, fontSize = 12.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                        prereqNames.forEach { name ->
+                            SuggestionChip(
+                                onClick = {},
+                                label = { Text(name, fontSize = 11.sp, color = c.secondaryText) },
+                                border = SuggestionChipDefaults.suggestionChipBorder(
+                                    enabled = true,
+                                    borderColor = c.chipBorder
+                                ),
+                                colors = SuggestionChipDefaults.suggestionChipColors(containerColor = c.chipUnselBg)
+                            )
+                        }
+                    }
+                }
+
                 // Study session log
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -500,7 +587,6 @@ fun CertDetailDialog(
                     TextButton(onClick = onDismiss) { Text("Cancel", color = c.secondaryText) }
                     Button(
                         onClick = {
-                            // Commit any minutes still in the field (user skipped the Log button)
                             val pendingMinutes = sessionMinutes.toIntOrNull() ?: 0
                             if (pendingMinutes > 0) {
                                 onLogSession(pendingMinutes)

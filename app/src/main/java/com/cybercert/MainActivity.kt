@@ -135,7 +135,9 @@ fun CyberCertApp(repository: CertRepository, settingsRepository: SettingsReposit
                         onClick = {
                             val now = System.currentTimeMillis()
                             if (now - lastNewsTap < 400) {
-                                newsViewModel.refresh()
+                                newsViewModel.resetFilter()
+                                newsViewModel.forceRefresh()
+                                coroutineScope.launch { newsListState.animateScrollToItem(0) }
                             } else {
                                 selectedTab = Tab.NEWS
                             }

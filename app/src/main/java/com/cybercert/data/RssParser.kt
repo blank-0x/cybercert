@@ -2,6 +2,7 @@ package com.cybercert.data
 
 import android.util.Log
 import android.util.Xml
+import com.cybercert.model.NewsCategory
 import com.cybercert.model.NewsItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,8 +21,8 @@ private const val TAG = "CyberCertRSS"
 object RssParser {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(15, TimeUnit.SECONDS)
+        .connectTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
     private val dateFormats = listOf(
@@ -42,7 +43,10 @@ object RssParser {
         FeedConfig("https://www.cisa.gov/feeds/hns.xml",                             "https://www.cisa.gov/uscert/ncas/alerts.xml",                  "CISA"),
         FeedConfig("https://www.ncsc.gov.uk/api/1/services/v1/report-rss-feed.xml",  "https://www.ncsc.gov.uk/feeds/news.xml",                       "NCSC UK"),
         FeedConfig("https://www.bleepingcomputer.com/feed/",                         null,                                                           "BleepingComputer"),
-        FeedConfig("https://feeds.feedburner.com/Securityweek",                      null,                                                           "SecurityWeek")
+        FeedConfig("https://feeds.feedburner.com/Securityweek",                      null,                                                           "SecurityWeek"),
+        FeedConfig("https://www.darkreading.com/rss.xml",                            null,                                                           "Dark Reading"),
+        FeedConfig("https://threatpost.com/feed/",                                   null,                                                           "Threatpost"),
+        FeedConfig("https://grahamcluley.com/feed/",                                 null,                                                           "Graham Cluley")
     )
 
     private val ES_FEEDS = listOf(
@@ -148,7 +152,8 @@ object RssParser {
                                         url = link.trim(),
                                         imageUrl = imageUrl,
                                         source = source,
-                                        publishedAt = parseDate(pubDate)
+                                        publishedAt = parseDate(pubDate),
+                                        category = detectCategory(title.trim(), description.take(300).trim())
                                     )
                                 )
                             }
@@ -171,6 +176,18 @@ object RssParser {
             } catch (_: Exception) {}
         }
         return System.currentTimeMillis()
+    }
+
+    private fun detectCategory(title: String, description: String): NewsCategory {
+        val text = (title + " " + description).lowercase()
+        return when {
+            text.contains(Regex("vulnerability|cve|patch|exploit")) -> NewsCategory.VULNERABILITIES
+            text.contains(Regex("malware|ransomware|trojan|virus")) -> NewsCategory.MALWARE
+            text.contains(Regex("breach|leak|stolen")) -> NewsCategory.BREACHES
+            text.contains(Regex("phishing|social engineering|scam")) -> NewsCategory.PHISHING
+            text.contains(Regex("tool|framework|release|open source")) -> NewsCategory.TOOLS
+            else -> NewsCategory.GENERAL
+        }
     }
 
     private fun stripHtml(html: String): String =

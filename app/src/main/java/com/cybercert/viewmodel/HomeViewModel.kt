@@ -13,6 +13,8 @@ import com.cybercert.model.CatalogCert
 import com.cybercert.model.CertRepository
 import com.cybercert.model.CertStatus
 import com.cybercert.model.Certification
+import com.cybercert.model.StreakCalculator
+import com.cybercert.model.StreakData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +48,10 @@ class HomeViewModel(
     val currentlyStudying: StateFlow<List<Certification>> = repository.allCerts.map { certs ->
         certs.filter { it.status == CertStatus.IN_PROGRESS }.take(3)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val streakData: StateFlow<StreakData> = repository.allSessionDates.map { dates ->
+        StreakCalculator.calculate(dates)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), StreakData(0, 0, false))
 
     // Settings
     val isDarkTheme: StateFlow<Boolean> = settings.isDarkTheme
